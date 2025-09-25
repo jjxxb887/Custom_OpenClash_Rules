@@ -1,0 +1,5 @@
+payload:
+  - '||ads.youtube.com^'
+  - '||googleads.g.doubleclick.net^'
+  - '||pagead2.googlesyndication.com^'
+  - '||youtubei.googleapis.com^'
