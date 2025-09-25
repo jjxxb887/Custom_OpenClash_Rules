@@ -33,21 +33,22 @@ jobs:
       - name: Ensure rule dir and YouTube-Ads.yaml
         run: |
           mkdir -p rule
-          cat > rule/YouTube-Ads.yaml <<'EOF'
-payload:
-  # YouTube 广告域名
-  - DOMAIN-SUFFIX,ads.youtube.com
-  - DOMAIN-SUFFIX,ads.youtube-nocookie.com
-  - DOMAIN-SUFFIX,pagead2.googlesyndication.com
-  - DOMAIN-SUFFIX,googleads.g.doubleclick.net
-  - DOMAIN-SUFFIX,doubleclick.net
-
-  # YouTube 视频广告相关域名（可能导致漏网）
-  - DOMAIN-SUFFIX,yt3.ggpht.com
-  - DOMAIN-SUFFIX,ytimg.l.google.com
-  - DOMAIN-SUFFIX,yt.adfalcon.com
-  - DOMAIN-SUFFIX,youtubei.googleapis.com
-EOF
+          printf '%s\n' "payload:" \
+            "  # YouTube 广告域名" \
+            "  - DOMAIN-SUFFIX,ads.youtube.com" \
+            "  - DOMAIN-SUFFIX,ads.youtube-nocookie.com" \
+            "  - DOMAIN-SUFFIX,pagead2.googlesyndication.com" \
+            "  - DOMAIN-SUFFIX,googleads.g.doubleclick.net" \
+            "  - DOMAIN-SUFFIX,doubleclick.net" \
+            "" \
+            "  # YouTube 视频广告相关域名（可能导致漏网）" \
+            "  - DOMAIN-SUFFIX,yt3.ggpht.com" \
+            "  - DOMAIN-SUFFIX,ytimg.l.google.com" \
+            "  - DOMAIN-SUFFIX,yt.adfalcon.com" \
+            "  - DOMAIN-SUFFIX,youtubei.googleapis.com" \
+            > rule/YouTube-Ads.yaml
+          echo "Wrote rule/YouTube-Ads.yaml:"
+          sed -n '1,120p' rule/YouTube-Ads.yaml || true
 
       - name: Patch cfg/Custom_Clash.ini (insert under [custom])
         run: |
@@ -57,14 +58,20 @@ EOF
             echo "[custom]" > "$CFG"
           fi
 
-          # 插入 YouTube-Ads 本地规则（定点插入到 [custom] 下方）
+          # Insert YouTube-Ads ruleset right after [custom] if not present
           if ! grep -q "ruleset=REJECT,clash-classic:./rule/YouTube-Ads.yaml,86400" "$CFG"; then
             sed -i '/^\[custom\]/a ruleset=REJECT,clash-classic:./rule/YouTube-Ads.yaml,86400' "$CFG"
+            echo "Inserted YouTube-Ads ruleset into $CFG"
+          else
+            echo "YouTube-Ads ruleset already present in $CFG"
           fi
 
-          # 插入 YouTube 在线规则（来自 blackmatrix7）
+          # Insert YouTube online provider rule if not present
           if ! grep -q "raw.githubusercontent.com/blackmatrix7/ios_rule_script" "$CFG"; then
             sed -i '/^\[custom\]/a ruleset=YouTube,clash-classic:https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml,86400' "$CFG"
+            echo "Inserted YouTube provider ruleset into $CFG"
+          else
+            echo "YouTube provider already present in $CFG"
           fi
 
       - name: Commit & push
