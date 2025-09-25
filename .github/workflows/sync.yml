@@ -32,7 +32,7 @@ jobs:
       - name: Ensure rule dir and YouTube-Ads.yaml
         run: |
           mkdir -p rule
-cat > rule/YouTube-Ads.yaml <<'EOF'
+          cat > rule/YouTube-Ads.yaml <<'EOF'
 payload:
   # YouTube 广告域名
   - DOMAIN-SUFFIX,ads.youtube.com
@@ -55,12 +55,10 @@ EOF
             mkdir -p cfg
             echo "[custom]" > "$CFG"
           fi
-
           # 插入 YouTube-Ads 本地规则
           if ! grep -q "YouTube-Ads" "$CFG"; then
             sed -i '/^\[custom\]/a ruleset=REJECT,clash-classic:./rule/YouTube-Ads.yaml,86400' "$CFG"
           fi
-
           # 插入 YouTube 在线规则
           if ! grep -q "blackmatrix7/ios_rule_script" "$CFG"; then
             sed -i '/^\[custom\]/a ruleset=📹 YouTube,clash-classic:https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml,86400' "$CFG"
