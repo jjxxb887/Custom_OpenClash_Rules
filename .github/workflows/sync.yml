@@ -1,0 +1,75 @@
+name: Sync with upstream and keep YouTube rules
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 每天 02:00 UTC 自动执行
+  workflow_dispatch:       # 允许手动执行
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set git config
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/Aethersailor/Custom_OpenClash_Rules.git || true
+          git fetch upstream --no-tags
+
+      - name: Merge upstream/main (prefer upstream)
+        run: |
+          git checkout main
+          git merge upstream/main -X theirs --no-edit || true
+
+      - name: Ensure rule dir and YouTube-Ads.yaml
+        run: |
+          mkdir -p rule
+cat > rule/YouTube-Ads.yaml <<'EOF'
+payload:
+  # YouTube 广告域名
+  - DOMAIN-SUFFIX,ads.youtube.com
+  - DOMAIN-SUFFIX,ads.youtube-nocookie.com
+  - DOMAIN-SUFFIX,pagead2.googlesyndication.com
+  - DOMAIN-SUFFIX,googleads.g.doubleclick.net
+  - DOMAIN-SUFFIX,doubleclick.net
+
+  # YouTube 视频广告相关域名（可能导致漏网）
+  - DOMAIN-SUFFIX,yt3.ggpht.com
+  - DOMAIN-SUFFIX,ytimg.l.google.com
+  - DOMAIN-SUFFIX,yt.adfalcon.com
+  - DOMAIN-SUFFIX,youtubei.googleapis.com
+EOF
+
+      - name: Patch cfg/Custom_Clash.ini (insert under [custom])
+        run: |
+          CFG=cfg/Custom_Clash.ini
+          if [ ! -f "$CFG" ]; then
+            mkdir -p cfg
+            echo "[custom]" > "$CFG"
+          fi
+
+          # 插入 YouTube-Ads 本地规则
+          if ! grep -q "YouTube-Ads" "$CFG"; then
+            sed -i '/^\[custom\]/a ruleset=REJECT,clash-classic:./rule/YouTube-Ads.yaml,86400' "$CFG"
+          fi
+
+          # 插入 YouTube 在线规则
+          if ! grep -q "blackmatrix7/ios_rule_script" "$CFG"; then
+            sed -i '/^\[custom\]/a ruleset=📹 YouTube,clash-classic:https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.yaml,86400' "$CFG"
+          fi
+
+      - name: Commit & push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add rule cfg .github/workflows || true
+          git commit -m "Sync upstream and restore YouTube rules" || echo "No changes to commit"
+          git push origin main || echo "Push failed"
